@@ -1,0 +1,63 @@
+# Environment and credentials - NEVER COMMIT
+.env
+.env.local
+.env.production
+credentials.json
+token.json
+*.pem
+*.key
+
+# WhatsApp session data
+whatsapp_session/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs (keep structure, ignore contents)
+obsidian_vault/Logs/*.md
+!obsidian_vault/Logs/.gitkeep
+
+# Node.js (MCP servers)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
