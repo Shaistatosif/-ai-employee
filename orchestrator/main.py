@@ -7,6 +7,7 @@ Coordinates watchers, processes tasks, and manages the workflow.
 import logging
 import signal
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +15,7 @@ from typing import Optional
 
 from config import settings
 from config.database import log_action, init_database
-from watchers import FilesystemWatcher
+from watchers import FilesystemWatcher, GmailWatcher, GOOGLE_API_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class Orchestrator:
         self.watchers = []
         self.is_running = False
         self.start_time: Optional[datetime] = None
+        self.watcher_threads: list[threading.Thread] = []
 
     def setup(self) -> None:
         """Initialize the system."""
@@ -56,9 +58,22 @@ class Orchestrator:
         inbox_path = settings.vault_path / "Inbox"
         inbox_path.mkdir(exist_ok=True)
 
-        # Setup filesystem watcher
+        # Setup filesystem watcher (always enabled)
         fs_watcher = FilesystemWatcher(watch_path=inbox_path)
         self.watchers.append(fs_watcher)
+
+        # Setup Gmail watcher (if Google API available and credentials.json exists)
+        credentials_path = Path("credentials.json")
+        if not GOOGLE_API_AVAILABLE:
+            logger.info("Gmail watcher disabled (Google API libraries not installed)")
+            logger.info("  To enable: pip install google-api-python-client google-auth-oauthlib")
+        elif not credentials_path.exists():
+            logger.info("Gmail watcher disabled (no credentials.json)")
+            logger.info("  To enable: download credentials.json from Google Cloud Console")
+        else:
+            gmail_watcher = GmailWatcher(check_interval=60, max_results=10)
+            self.watchers.append(gmail_watcher)
+            logger.info("Gmail watcher enabled (credentials.json found)")
 
         logger.info("Setup complete")
 

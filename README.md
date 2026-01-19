@@ -46,7 +46,29 @@ cp .env.example .env      # Mac/Linux
 # Edit .env with your credentials (optional for Bronze tier)
 ```
 
-### 4. Run
+### 4. Gmail Setup (Silver Tier)
+
+To enable Gmail monitoring:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project (or select existing)
+3. Enable Gmail API:
+   - Go to **APIs & Services > Library**
+   - Search for "Gmail API"
+   - Click **Enable**
+4. Create OAuth credentials:
+   - Go to **APIs & Services > Credentials**
+   - Click **Create Credentials > OAuth client ID**
+   - Choose **Desktop application**
+   - Download the JSON file
+   - Save as `credentials.json` in project root
+5. Run setup script:
+   ```bash
+   python scripts/setup_gmail.py
+   ```
+6. Authorize in browser when prompted
+
+### 5. Run
 
 ```bash
 # Check configuration
@@ -59,7 +81,7 @@ python main.py
 python main.py --dry-run
 ```
 
-### 5. Test It
+### 6. Test It
 
 1. Drop a text file into `obsidian_vault/Inbox/`
 2. Watch the console - a task will be created in `obsidian_vault/Needs_Action/`
@@ -113,15 +135,14 @@ obsidian_vault/
 
 ## Tier Progress
 
-### Bronze (Current)
+### Bronze (Complete)
 - [x] Obsidian vault with Dashboard.md
 - [x] Company_Handbook.md
 - [x] Filesystem watcher
 - [x] Basic folder structure
-- [ ] Gmail watcher (optional)
 
-### Silver (Next)
-- [ ] Gmail watcher
+### Silver (In Progress)
+- [x] Gmail watcher (requires credentials.json)
 - [ ] HITL approval workflow
 - [ ] MCP server for email
 - [ ] Scheduled tasks
