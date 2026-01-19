@@ -16,6 +16,7 @@ from typing import Optional
 from config import settings
 from config.database import log_action, init_database
 from watchers import FilesystemWatcher, GmailWatcher, GOOGLE_API_AVAILABLE
+from workflow import TaskProcessor, ApprovalHandler
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,9 @@ class Orchestrator:
         self.is_running = False
         self.start_time: Optional[datetime] = None
         self.watcher_threads: list[threading.Thread] = []
+        self.task_processor: Optional[TaskProcessor] = None
+        self.approval_handler: Optional[ApprovalHandler] = None
+        self.process_interval = 10  # seconds between processing cycles
 
     def setup(self) -> None:
         """Initialize the system."""
@@ -75,6 +79,11 @@ class Orchestrator:
             self.watchers.append(gmail_watcher)
             logger.info("Gmail watcher enabled (credentials.json found)")
 
+        # Setup HITL workflow components
+        self.task_processor = TaskProcessor()
+        self.approval_handler = ApprovalHandler(on_approved=self._on_task_approved)
+        logger.info("HITL workflow initialized")
+
         logger.info("Setup complete")
 
     def start(self) -> None:
@@ -111,8 +120,14 @@ class Orchestrator:
         logger.info(f"  Vault: {settings.vault_path}")
         logger.info(f"  Dry Run: {settings.dry_run}")
         logger.info(f"  Watchers: {len(self.watchers)}")
+        logger.info(f"  HITL Workflow: Enabled")
         logger.info("=" * 50)
-        logger.info("Drop files into the Inbox folder to create tasks.")
+        logger.info("WORKFLOW:")
+        logger.info("  1. Drop files in Inbox/ -> Creates task in Needs_Action/")
+        logger.info("  2. AI analyzes -> Creates plan, routes to Pending_Approval/ or Approved/")
+        logger.info("  3. Review Pending_Approval/ -> Move to Approved/ to execute")
+        logger.info("  4. Completed tasks -> Done/")
+        logger.info("=" * 50)
         logger.info("Press Ctrl+C to stop.")
         logger.info("=" * 50)
 
@@ -174,6 +189,40 @@ class Orchestrator:
         except Exception:
             return 0
 
+    def _count_pending_approvals(self) -> int:
+        """Count tasks in Pending_Approval folder."""
+        try:
+            return len([f for f in settings.pending_approval_path.glob("*.md")
+                       if "_plan_" not in f.name])
+        except Exception:
+            return 0
+
+    def _on_task_approved(self, task_path: Path) -> None:
+        """Callback when a task is approved by human."""
+        logger.info(f"Task approved and ready for execution: {task_path.name}")
+        # In DRY_RUN mode, we don't execute external actions
+        if settings.dry_run:
+            logger.info("  (DRY_RUN mode - no external actions executed)")
+
+    def _process_cycle(self) -> None:
+        """Run one cycle of task processing."""
+        # Process new tasks from Needs_Action
+        if self.task_processor:
+            new_tasks = self.task_processor.process_all()
+            if new_tasks > 0:
+                logger.info(f"Processed {new_tasks} new task(s)")
+
+        # Process approved tasks
+        if self.approval_handler:
+            approved = self.approval_handler.process_approvals()
+            if approved > 0:
+                logger.info(f"Completed {approved} approved task(s)")
+
+            # Log pending count periodically
+            pending = self._count_pending_approvals()
+            if pending > 0:
+                logger.debug(f"Tasks awaiting approval: {pending}")
+
     def run(self) -> None:
         """Run the orchestrator (blocking)."""
         # Handle shutdown signals
@@ -189,9 +238,17 @@ class Orchestrator:
         self.setup()
         self.start()
 
-        # Main loop
+        # Main loop with processing
+        last_process_time = time.time()
         try:
             while self.is_running:
+                current_time = time.time()
+
+                # Run processing cycle at interval
+                if current_time - last_process_time >= self.process_interval:
+                    self._process_cycle()
+                    last_process_time = current_time
+
                 time.sleep(1)
         except KeyboardInterrupt:
             pass
