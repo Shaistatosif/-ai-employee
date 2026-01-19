@@ -197,10 +197,10 @@ def main():
 
     # Print banner
     print("""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║           Personal AI Employee System v0.1.0              ║
-    ║         Your life and business on autopilot.              ║
-    ╚═══════════════════════════════════════════════════════════╝
+    ============================================================
+    |         Personal AI Employee System v0.1.0               |
+    |       Your life and business on autopilot.               |
+    ============================================================
     """)
 
     # Run orchestrator
