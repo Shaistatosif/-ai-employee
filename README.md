@@ -5,6 +5,9 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status: Silver Tier](https://img.shields.io/badge/Status-Silver%20Tier-yellow.svg)](#tier-progress)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black.svg)](https://ai-employee-system.vercel.app)
+
+**[Live Demo](https://ai-employee-system.vercel.app)** - Try the HITL Classification System!
 
 ---
 
