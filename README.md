@@ -1,182 +1,249 @@
-# Personal AI Employee System
+# 🤖 Personal AI Employee System
 
-> Your life and business on autopilot. Local-first, agent-driven, human-in-the-loop.
+> **Your life and business on autopilot.** Local-first, human-in-the-loop, AI-powered task automation.
 
-## Overview
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Status: Silver Tier](https://img.shields.io/badge/Status-Silver%20Tier-yellow.svg)](#tier-progress)
 
-An autonomous AI assistant that manages personal affairs (Gmail, WhatsApp) and business operations (Social Media, Tasks) 24/7 using Claude Code as the reasoning engine and Obsidian as the management dashboard.
+---
 
-**Current Tier:** Bronze (Minimum Viable)
+## ✨ Features
 
-## Quick Start
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 📁 **File Watcher** | ✅ Working | Auto-detects files in Inbox folder |
+| 🔒 **HITL Approval** | ✅ Working | Human approval for sensitive actions |
+| 💰 **Payment Detection** | ✅ Working | Flags payments > $50 for review |
+| 📊 **Dashboard** | ✅ Working | Real-time system status in Markdown |
+| ⏰ **Scheduler** | ✅ Working | Weekly briefings, hourly updates |
+| 📧 **Email Actions** | ✅ Ready | Gmail integration (needs credentials) |
+| 🪟 **Windows Support** | ✅ Working | PollingObserver for reliability |
 
-### 1. Prerequisites
+---
 
-- Python 3.11+ installed
-- Obsidian (optional, for viewing vault)
-- Git
+## 🚀 Quick Start
 
-### 2. Setup
+### 1. Clone & Setup
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd Hackathon-0
+# Clone
+git clone https://github.com/Shaistatosif/-ai-employee.git
+cd -ai-employee
 
-# Create virtual environment
+# Virtual environment
 python -m venv venv
-
-# Activate (Windows)
-venv\Scripts\activate
-
-# Activate (Mac/Linux)
-source venv/bin/activate
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Mac/Linux
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Configuration
+### 2. Run
 
 ```bash
-# Copy environment template
-copy .env.example .env    # Windows
-cp .env.example .env      # Mac/Linux
-
-# Edit .env with your credentials (optional for Bronze tier)
-```
-
-### 4. Gmail Setup (Silver Tier)
-
-To enable Gmail monitoring:
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project (or select existing)
-3. Enable Gmail API:
-   - Go to **APIs & Services > Library**
-   - Search for "Gmail API"
-   - Click **Enable**
-4. Create OAuth credentials:
-   - Go to **APIs & Services > Credentials**
-   - Click **Create Credentials > OAuth client ID**
-   - Choose **Desktop application**
-   - Download the JSON file
-   - Save as `credentials.json` in project root
-5. Run setup script:
-   ```bash
-   python scripts/setup_gmail.py
-   ```
-6. Authorize in browser when prompted
-
-### 5. Run
-
-```bash
-# Check configuration
-python main.py --check
-
-# Start the system
 python main.py
-
-# Or start in dry-run mode (recommended for testing)
-python main.py --dry-run
 ```
 
-### 6. Test It
-
-1. Drop a text file into `obsidian_vault/Inbox/`
-2. Watch the console - a task will be created in `obsidian_vault/Needs_Action/`
-3. Open Obsidian vault at `obsidian_vault/` to see the Dashboard
-
-## Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Watchers      │────▶│  Obsidian Vault │────▶│   Claude Code   │
-│ (Gmail, Files)  │     │  (Markdown)     │     │  (Reasoning)    │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │                        │
-                               ▼                        ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │  Human Review   │     │   MCP Servers   │
-                        │ (Pending_Approval)│    │   (Actions)     │
-                        └─────────────────┘     └─────────────────┘
-```
-
-## Folder Structure
-
-```
-obsidian_vault/
-├── Dashboard.md          # System overview
-├── Company_Handbook.md   # Rules of engagement
-├── Business_Goals.md     # Your objectives
-├── Inbox/                # Drop files here for processing
-├── Needs_Action/         # Tasks waiting for AI
-├── Plans/                # AI-generated action plans
-├── Pending_Approval/     # Needs your approval (HITL)
-├── Approved/             # Ready for execution
-├── Done/                 # Completed tasks
-├── Logs/                 # Daily action logs
-└── Briefings/            # Weekly CEO reports
-```
-
-## Core Principles
-
-1. **Local-First**: All data stays on your machine
-2. **Human-in-the-Loop**: Sensitive actions require your approval
-3. **Security-First**: Credentials in .env, never committed
-4. **Autonomous Where Safe**: AI handles routine tasks automatically
-
-## Security
-
-- All credentials stored in `.env` (never committed)
-- `.env` is in `.gitignore` by default
-- Audit logging for every action
-- DRY_RUN mode for safe testing
-
-## Tier Progress
-
-### Bronze (Complete)
-- [x] Obsidian vault with Dashboard.md
-- [x] Company_Handbook.md
-- [x] Filesystem watcher
-- [x] Basic folder structure
-
-### Silver (In Progress)
-- [x] Gmail watcher (requires credentials.json)
-- [ ] HITL approval workflow
-- [ ] MCP server for email
-- [ ] Scheduled tasks
-
-### Gold (Future)
-- [ ] Multiple watchers
-- [ ] Weekly briefings
-- [ ] Ralph Wiggum loop
-- [ ] Error recovery
-
-## Development
+### 3. Test the Workflow
 
 ```bash
-# Run filesystem watcher only
-python -m watchers.filesystem_watcher --poll
+# Drop a file in Inbox (new terminal)
+echo "Test task for AI" > obsidian_vault/Inbox/test.txt
 
-# Run with verbose logging
-python main.py --verbose
-
-# Check configuration
-python main.py --check
+# Watch the magic happen!
+# - File detected → Task created → Auto-processed → Done
 ```
-
-## Hackathon Submission
-
-- **Tier**: Bronze
-- **Repository**: [GitHub URL]
-- **Demo Video**: [Link]
-- **Security**: Credentials in .env, gitignored
-
-## License
-
-MIT License - See LICENSE file
 
 ---
 
-Built for the Personal AI Employee Hackathon 2026
+## 🔄 How It Works
+
+```
+📥 Inbox          →  📋 Needs_Action  →  📝 Plans
+(drop files)         (AI analyzes)       (action plan)
+                                              ↓
+                                    ┌─────────┴─────────┐
+                                    ↓                   ↓
+                              ⏳ Pending_Approval    ✅ Approved
+                              (risky tasks)         (safe tasks)
+                                    ↓                   ↓
+                                    └─────────┬─────────┘
+                                              ↓
+                                         ✔️ Done
+                                      (completed)
+```
+
+### HITL Decision Logic
+
+| Content | Risk Level | Action |
+|---------|------------|--------|
+| Read/analyze files | 🟢 Low | Auto-approve |
+| Payment < $50 | 🟡 Medium | Auto-approve |
+| Payment > $50 | 🔴 High | **Manual approval** |
+| Email to unknown | 🔴 High | **Manual approval** |
+| Delete files | 🔴 High | **Manual approval** |
+| Social media post | 🔴 High | **Manual approval** |
+
+---
+
+## 📁 Project Structure
+
+```
+ai-employee/
+├── 🧠 orchestrator/
+│   ├── main.py              # System coordinator
+│   └── scheduler.py         # Weekly briefings, dashboard updates
+│
+├── 👁️ watchers/
+│   ├── filesystem_watcher.py # Monitors Inbox folder
+│   └── gmail_watcher.py      # Email monitoring (optional)
+│
+├── ⚖️ workflow/
+│   ├── hitl.py              # Risk classification
+│   ├── task_processor.py    # Analyzes tasks, creates plans
+│   └── approval_handler.py  # Handles human approval
+│
+├── ⚡ actions/
+│   ├── email_action.py      # Send emails via Gmail
+│   └── executor.py          # Coordinates action execution
+│
+├── 📁 obsidian_vault/       # Your data (Markdown)
+│   ├── Dashboard.md         # Live system status
+│   ├── Inbox/               # Drop files here
+│   ├── Pending_Approval/    # Review these
+│   ├── Done/                # Completed tasks
+│   └── Logs/                # Action history
+│
+├── ⚙️ config/
+│   └── config.py            # Settings & environment
+│
+├── main.py                  # Entry point
+├── requirements.txt         # Dependencies
+└── .env                     # Credentials (not committed)
+```
+
+---
+
+## 🎯 Tier Progress
+
+### ✅ Bronze Tier (Complete)
+- [x] Obsidian vault with Dashboard
+- [x] File watcher (Windows compatible)
+- [x] Basic folder workflow
+- [x] Configuration management
+
+### ✅ Silver Tier (90% Complete)
+- [x] HITL approval workflow
+- [x] Risk classification (payments, emails, etc.)
+- [x] Scheduler with periodic tasks
+- [x] Action executor framework
+- [x] Gmail watcher (ready, needs credentials)
+- [x] Windows Task Scheduler setup
+- [ ] LinkedIn auto-posting
+
+### ⏳ Gold Tier (Future)
+- [ ] WhatsApp integration
+- [ ] Multiple social platforms
+- [ ] Weekly CEO briefings
+- [ ] Error recovery system
+
+---
+
+## 🔐 Core Principles
+
+1. **🏠 Local-First** - All data stays on YOUR machine
+2. **👤 Human-in-the-Loop** - Sensitive actions need YOUR approval
+3. **🔒 Security-First** - Credentials in `.env`, never committed
+4. **🤖 Autonomous Where Safe** - AI handles routine tasks automatically
+
+---
+
+## ⚙️ Configuration
+
+Create `.env` file (already gitignored):
+
+```env
+# System
+VAULT_PATH=./obsidian_vault
+DRY_RUN=true
+LOG_LEVEL=INFO
+
+# Gmail (optional)
+# GMAIL_CLIENT_ID=your_id
+# GMAIL_CLIENT_SECRET=your_secret
+
+# Database (optional)
+# NEON_DATABASE_URL=postgresql://...
+```
+
+---
+
+## 📸 Screenshots
+
+### Dashboard (VS Code / Obsidian)
+```
+# AI Employee Dashboard
+
+**System Status**: 🟢 Running
+**Mode**: 🧪 DRY RUN
+
+| Metric | Value |
+|--------|-------|
+| Tasks Pending | 0 |
+| Awaiting Approval | 0 |
+| Completed | 6 |
+```
+
+### Console Output
+```
+============================================================
+|         Personal AI Employee System v0.1.0               |
+============================================================
+
+INFO - AI Employee System is running!
+INFO - Vault: D:\obsidian_vault
+INFO - Watchers: 1
+INFO - HITL Workflow: Enabled
+INFO - Scheduler: Enabled (2 tasks)
+
+INFO - New file detected: payment_request.txt
+INFO - Pending approval required (payment > $50)
+```
+
+---
+
+## 🛠️ Development
+
+```bash
+# Run with verbose logging
+python main.py --verbose
+
+# Check system status
+python main.py --check
+
+# Setup Windows auto-start
+python scripts/setup_task_scheduler.py
+```
+
+---
+
+## 📜 License
+
+MIT License - Feel free to use and modify!
+
+---
+
+## 🙏 Credits
+
+Built for the **Personal AI Employee Hackathon 2026**
+
+**Author:** Shaista Tosif
+**AI Assistant:** Claude Opus 4.5
+
+---
+
+<p align="center">
+  <b>⭐ Star this repo if you find it useful!</b>
+</p>
