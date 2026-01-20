@@ -13,6 +13,7 @@ from typing import Optional, Set
 
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent
 from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 
 from config import settings
 from config.database import log_action
@@ -80,11 +81,21 @@ class FilesystemWatcher(BaseWatcher):
             logger.warning(f"{self.name} is already running")
             return
 
-        self.observer = Observer()
+        # Use PollingObserver for Windows compatibility (more reliable)
+        import sys
+        if sys.platform == "win32":
+            self.observer = PollingObserver(timeout=2)
+            logger.info("Using PollingObserver for Windows")
+        else:
+            self.observer = Observer()
+
         event_handler = NewFileHandler(self)
         self.observer.schedule(event_handler, str(self.watch_path), recursive=False)
         self.observer.start()
         self.is_running = True
+
+        # Process any existing files on startup
+        self._process_existing_files()
 
         logger.info(f"{self.name} started watching: {self.watch_path}")
         log_action(
@@ -199,9 +210,24 @@ Please analyze this file and determine the appropriate action:
 
     def _should_process(self, file_path: Path) -> bool:
         """Check if file should be processed based on extension."""
+        # Skip .gitkeep files
+        if file_path.name == ".gitkeep":
+            return False
         if self.extensions is None:
             return True
         return file_path.suffix.lower() in self.extensions
+
+    def _process_existing_files(self) -> None:
+        """Process any files already in the inbox on startup."""
+        try:
+            for file_path in self.watch_path.iterdir():
+                if file_path.is_file() and self._should_process(file_path):
+                    file_key = str(file_path)
+                    if file_key not in self.processed_files:
+                        logger.info(f"Processing existing file: {file_path.name}")
+                        self.process_new_file(file_path)
+        except Exception as e:
+            logger.error(f"Error processing existing files: {e}")
 
     def _read_file_safely(self, file_path: Path, max_size: int = 50000) -> str:
         """
