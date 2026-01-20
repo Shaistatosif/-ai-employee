@@ -13,6 +13,7 @@ from typing import Callable, Optional
 
 from config import settings
 from config.database import log_action
+from actions import ActionExecutor, ActionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class ApprovalHandler:
         self.on_approved = on_approved
         self.pending_tasks: set[str] = set()
         self.processed_approvals: set[str] = set()
+        self.executor = ActionExecutor()
 
     def scan_pending(self) -> list[Path]:
         """
@@ -116,6 +118,22 @@ class ApprovalHandler:
             approved_by="human",
             result="success",
         )
+
+        # Execute the action via executor
+        result = self.executor.execute(task_path)
+        if result:
+            if result.status == ActionStatus.SUCCESS:
+                logger.info(f"Action executed successfully: {result.message}")
+            elif result.status == ActionStatus.SKIPPED:
+                logger.info(f"Action skipped: {result.message}")
+            elif result.status == ActionStatus.FAILED:
+                logger.error(f"Action failed: {result.message}")
+                log_action(
+                    action_type="action_failed",
+                    target=str(task_path),
+                    parameters={"error": result.error},
+                    result="failure",
+                )
 
         # Call the approval callback if set
         if self.on_approved:

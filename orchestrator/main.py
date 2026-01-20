@@ -17,6 +17,7 @@ from config import settings
 from config.database import log_action, init_database
 from watchers import FilesystemWatcher, GmailWatcher, GOOGLE_API_AVAILABLE
 from workflow import TaskProcessor, ApprovalHandler
+from orchestrator.scheduler import Scheduler, WeeklyBriefingGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ class Orchestrator:
         self.watcher_threads: list[threading.Thread] = []
         self.task_processor: Optional[TaskProcessor] = None
         self.approval_handler: Optional[ApprovalHandler] = None
+        self.scheduler: Optional[Scheduler] = None
+        self.briefing_generator: Optional[WeeklyBriefingGenerator] = None
         self.process_interval = 10  # seconds between processing cycles
 
     def setup(self) -> None:
@@ -84,6 +87,28 @@ class Orchestrator:
         self.approval_handler = ApprovalHandler(on_approved=self._on_task_approved)
         logger.info("HITL workflow initialized")
 
+        # Setup scheduler with periodic tasks
+        self.scheduler = Scheduler()
+        self.briefing_generator = WeeklyBriefingGenerator()
+
+        # Weekly briefing: run every 7 days (604800 seconds)
+        self.scheduler.add_task(
+            name="weekly_briefing",
+            callback=self.briefing_generator.generate,
+            interval_seconds=604800,  # 7 days
+            run_immediately=False,
+        )
+
+        # Dashboard update: run every hour (3600 seconds)
+        self.scheduler.add_task(
+            name="dashboard_update",
+            callback=self._update_dashboard,
+            interval_seconds=3600,  # 1 hour
+            run_immediately=True,
+        )
+
+        logger.info("Scheduler initialized with periodic tasks")
+
         logger.info("Setup complete")
 
     def start(self) -> None:
@@ -115,12 +140,18 @@ class Orchestrator:
             except Exception as e:
                 logger.error(f"Failed to start {watcher.name}: {e}")
 
+        # Start scheduler
+        if self.scheduler:
+            self.scheduler.start()
+            logger.info("Started: Scheduler")
+
         logger.info("=" * 50)
         logger.info("AI Employee System is running!")
         logger.info(f"  Vault: {settings.vault_path}")
         logger.info(f"  Dry Run: {settings.dry_run}")
         logger.info(f"  Watchers: {len(self.watchers)}")
         logger.info(f"  HITL Workflow: Enabled")
+        logger.info(f"  Scheduler: Enabled ({len(self.scheduler.tasks) if self.scheduler else 0} tasks)")
         logger.info("=" * 50)
         logger.info("WORKFLOW:")
         logger.info("  1. Drop files in Inbox/ -> Creates task in Needs_Action/")
@@ -137,6 +168,11 @@ class Orchestrator:
             return
 
         logger.info("Shutting down AI Employee System...")
+
+        # Stop scheduler
+        if self.scheduler:
+            self.scheduler.stop()
+            logger.info("Stopped: Scheduler")
 
         # Stop all watchers
         for watcher in self.watchers:
@@ -171,6 +207,7 @@ class Orchestrator:
             "dry_run": settings.dry_run,
             "vault_path": str(settings.vault_path),
             "watchers": [w.get_status() for w in self.watchers],
+            "scheduler": self.scheduler.get_status() if self.scheduler else None,
             "pending_tasks": self._count_pending_tasks(),
             "completed_tasks": self._count_completed_tasks(),
         }
@@ -203,6 +240,79 @@ class Orchestrator:
         # In DRY_RUN mode, we don't execute external actions
         if settings.dry_run:
             logger.info("  (DRY_RUN mode - no external actions executed)")
+
+    def _update_dashboard(self) -> None:
+        """Update the Dashboard.md with current system status."""
+        try:
+            dashboard_path = settings.vault_path / "Dashboard.md"
+            now = datetime.now()
+
+            # Gather statistics
+            pending_tasks = self._count_pending_tasks()
+            pending_approvals = self._count_pending_approvals()
+            completed_tasks = self._count_completed_tasks()
+            uptime = (now - self.start_time).total_seconds() / 3600 if self.start_time else 0
+
+            # Build dashboard content
+            content = f"""# AI Employee Dashboard
+
+**Last Updated**: {now.strftime('%Y-%m-%d %H:%M:%S')}
+**System Status**: {"🟢 Running" if self.is_running else "🔴 Stopped"}
+**Mode**: {"🧪 DRY RUN" if settings.dry_run else "🚀 LIVE"}
+
+---
+
+## Quick Stats
+
+| Metric | Value |
+|--------|-------|
+| Tasks Pending | {pending_tasks} |
+| Awaiting Approval | {pending_approvals} |
+| Completed | {completed_tasks} |
+| Uptime | {uptime:.1f} hours |
+| Watchers Active | {len(self.watchers)} |
+
+---
+
+## Folders
+
+- 📥 **Inbox**: Drop files here for processing
+- 📋 **Needs_Action**: {pending_tasks} task(s) awaiting AI analysis
+- ⏳ **Pending_Approval**: {pending_approvals} task(s) need your review
+- ✅ **Approved**: Ready for execution
+- ✔️ **Done**: Completed tasks archive
+
+---
+
+## Recent Activity
+
+Check `Logs/` folder for detailed action logs.
+
+---
+
+## Scheduled Tasks
+
+| Task | Interval | Next Run |
+|------|----------|----------|
+| Weekly Briefing | 7 days | Check Briefings/ |
+| Dashboard Update | 1 hour | Auto |
+
+---
+
+*Dashboard auto-updates hourly when system is running*
+"""
+
+            dashboard_path.write_text(content, encoding="utf-8")
+            logger.debug("Dashboard updated")
+
+            log_action(
+                action_type="dashboard_updated",
+                target=str(dashboard_path),
+                parameters={"pending": pending_tasks, "approvals": pending_approvals},
+                result="success",
+            )
+        except Exception as e:
+            logger.error(f"Failed to update dashboard: {e}")
 
     def _process_cycle(self) -> None:
         """Run one cycle of task processing."""
