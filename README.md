@@ -20,7 +20,8 @@
 | 💰 **Payment Detection** | ✅ Working | Flags payments > $50 for review |
 | 📊 **Dashboard** | ✅ Working | Real-time system status in Markdown |
 | ⏰ **Scheduler** | ✅ Working | Weekly briefings, hourly updates |
-| 📧 **Email Actions** | ✅ Ready | Gmail integration (needs credentials) |
+| 📧 **Gmail Watcher** | ✅ Working | Reads & monitors Gmail inbox |
+| 📨 **Email Sending** | ✅ Working | Sends emails via Gmail API |
 | 🪟 **Windows Support** | ✅ Working | PollingObserver for reliability |
 
 ---
@@ -137,14 +138,14 @@ ai-employee/
 - [x] Basic folder workflow
 - [x] Configuration management
 
-### ✅ Silver Tier (90% Complete)
+### ✅ Silver Tier (Complete)
 - [x] HITL approval workflow
 - [x] Risk classification (payments, emails, etc.)
 - [x] Scheduler with periodic tasks
 - [x] Action executor framework
-- [x] Gmail watcher (ready, needs credentials)
+- [x] Gmail watcher (reading emails)
+- [x] Gmail email sending
 - [x] Windows Task Scheduler setup
-- [ ] LinkedIn auto-posting
 
 ### ⏳ Gold Tier (Future)
 - [ ] WhatsApp integration
@@ -196,7 +197,7 @@ LOG_LEVEL=INFO
 |--------|-------|
 | Tasks Pending | 0 |
 | Awaiting Approval | 0 |
-| Completed | 6 |
+| Completed | 48+ |
 ```
 
 ### Console Output
@@ -207,7 +208,7 @@ LOG_LEVEL=INFO
 
 INFO - AI Employee System is running!
 INFO - Vault: D:\obsidian_vault
-INFO - Watchers: 1
+INFO - Watchers: 2 (Filesystem + Gmail)
 INFO - HITL Workflow: Enabled
 INFO - Scheduler: Enabled (2 tasks)
 
@@ -243,7 +244,7 @@ MIT License - Feel free to use and modify!
 Built for the **Personal AI Employee Hackathon 2026**
 
 **Author:** Shaista Tosif
-**AI Assistant:** Claude Opus 4.5
+**AI Assistant:** Claude Opus 4.6
 
 ---
 
