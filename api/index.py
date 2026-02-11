@@ -375,6 +375,16 @@ HTML_PAGE = """<!DOCTYPE html>
             transform: translateY(-5px);
         }
 
+        .workflow-step.clickable {
+            cursor: pointer;
+        }
+
+        .workflow-step.active-step {
+            border-color: #ffcc00;
+            background: linear-gradient(145deg, rgba(255, 204, 0, 0.25) 0%, rgba(255, 68, 68, 0.15) 100%);
+            animation: pulse 1s ease-in-out;
+        }
+
         .workflow-step .icon {
             font-size: 1.6em;
             margin-bottom: 10px;
@@ -504,15 +514,15 @@ HTML_PAGE = """<!DOCTYPE html>
             <h2>System Stats</h2>
             <div class="stats-grid">
                 <div class="stat-box">
-                    <div class="stat-number">6</div>
+                    <div class="stat-number">48+</div>
                     <div class="stat-label">Tasks Completed</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-number">2</div>
+                    <div class="stat-number">3</div>
                     <div class="stat-label">Action Handlers</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-number">1</div>
+                    <div class="stat-number">2</div>
                     <div class="stat-label">Active Watchers</div>
                 </div>
                 <div class="stat-box">
@@ -525,26 +535,27 @@ HTML_PAGE = """<!DOCTYPE html>
         <div class="card">
             <h2>Workflow</h2>
             <div class="workflow">
-                <div class="workflow-step">
-                    <div class="icon">INBOX</div>
+                <div class="workflow-step clickable" onclick="simulateWorkflow('inbox')">
+                    <div class="icon">&#128229; INBOX</div>
                     <div>Drop files</div>
                 </div>
                 <div class="arrow">&rarr;</div>
-                <div class="workflow-step">
-                    <div class="icon">AI</div>
+                <div class="workflow-step clickable" onclick="simulateWorkflow('ai')">
+                    <div class="icon">&#129302; AI</div>
                     <div>Analyzes</div>
                 </div>
                 <div class="arrow">&rarr;</div>
-                <div class="workflow-step">
-                    <div class="icon">HITL</div>
+                <div class="workflow-step clickable" onclick="simulateWorkflow('hitl')">
+                    <div class="icon">&#128101; HITL</div>
                     <div>Check</div>
                 </div>
                 <div class="arrow">&rarr;</div>
-                <div class="workflow-step">
-                    <div class="icon">DONE</div>
+                <div class="workflow-step clickable" onclick="simulateWorkflow('done')">
+                    <div class="icon">&#9989; DONE</div>
                     <div>Complete</div>
                 </div>
             </div>
+            <div id="workflowDemo" style="margin-top:18px; display:none;" class="result low"></div>
         </div>
 
         <div class="card">
@@ -585,6 +596,42 @@ HTML_PAGE = """<!DOCTYPE html>
     </div>
 
     <script>
+        function simulateWorkflow(step) {
+            const demo = document.getElementById('workflowDemo');
+            const steps = document.querySelectorAll('.workflow-step');
+            steps.forEach(s => s.classList.remove('active-step'));
+            event.currentTarget.classList.add('active-step');
+            demo.style.display = 'block';
+
+            const info = {
+                inbox: {
+                    title: '&#128229; INBOX - File Drop Zone',
+                    desc: 'Drop any file into <code>obsidian_vault/Inbox/</code> folder. The Filesystem Watcher automatically detects new files within seconds. Gmail Watcher also monitors your email inbox every 60 seconds.',
+                    example: 'Example: Drop <b>payment_request.txt</b> or receive an email with invoice'
+                },
+                ai: {
+                    title: '&#129302; AI Analysis Engine',
+                    desc: 'The system reads the file/email content, extracts key information (amounts, recipients, keywords), and creates a structured task in <code>Needs_Action/</code> with YAML frontmatter.',
+                    example: 'Detects: payment amounts, email addresses, sensitive keywords, action types'
+                },
+                hitl: {
+                    title: '&#128101; Human-in-the-Loop Check',
+                    desc: 'HITL classifier evaluates risk level:<br>&#8226; <span style="color:#ffcc00">LOW risk</span> = Auto-approved (read files, organize notes)<br>&#8226; <span style="color:#ff4444">HIGH risk</span> = Needs YOUR approval (payments >$50, deletions, sensitive data)',
+                    example: 'Safe tasks go to <b>Approved/</b>, risky tasks go to <b>Pending_Approval/</b>'
+                },
+                done: {
+                    title: '&#9989; Task Complete',
+                    desc: 'Approved tasks are executed (emails sent, files processed) and moved to <code>Done/</code> folder. Full audit log is maintained in <code>Logs/</code>.',
+                    example: 'Everything is tracked: timestamps, actions taken, approval decisions'
+                }
+            };
+
+            const data = info[step];
+            demo.innerHTML = '<h3>' + data.title + '</h3><p style="margin:10px 0;color:#ccc;">' + data.desc + '</p><p style="color:#999;font-size:0.9em;">' + data.example + '</p>';
+            demo.className = 'result low';
+            demo.style.display = 'block';
+        }
+
         async function classifyTask() {
             const input = document.getElementById('taskInput').value;
             const resultDiv = document.getElementById('result');
