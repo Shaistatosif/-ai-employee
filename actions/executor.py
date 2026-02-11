@@ -10,6 +10,7 @@ from typing import Optional
 
 from actions.base_action import BaseAction, ActionResult, ActionStatus
 from actions.email_action import EmailAction, EmailDraftAction
+from actions.general_action import GeneralAction
 from config.database import log_action
 
 logger = logging.getLogger(__name__)
@@ -33,9 +34,12 @@ class ActionExecutor:
 
     def _register_default_actions(self) -> None:
         """Register built-in action handlers."""
-        # Email actions
+        # Email actions (specific handlers first)
         self.register(EmailAction())
         self.register(EmailDraftAction())
+
+        # General fallback handler (MUST be last - catches everything)
+        self.register(GeneralAction())
 
         logger.info(f"Action executor initialized with {len(self.actions)} action handlers")
 
@@ -120,14 +124,29 @@ class ActionExecutor:
                     frontmatter = yaml.safe_load(parts[1])
                     if frontmatter:
                         data.update(frontmatter)
-                    data["body"] = parts[2].strip()
                 except Exception as e:
-                    logger.warning(f"Failed to parse frontmatter: {e}")
-                    data["body"] = content
+                    logger.warning(f"Failed to parse frontmatter via YAML: {e}")
+                    # Fallback: extract key-value pairs manually
+                    self._parse_frontmatter_fallback(parts[1], data)
+                data["body"] = parts[2].strip()
         else:
             data["body"] = content
 
         return data
+
+    def _parse_frontmatter_fallback(self, frontmatter_text: str, data: dict) -> None:
+        """Extract key-value pairs from frontmatter when YAML parsing fails."""
+        import re
+        for line in frontmatter_text.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            # Match "key: value" but only split on the FIRST colon
+            match = re.match(r'^(\w+):\s*(.+)$', line)
+            if match:
+                key = match.group(1).strip()
+                value = match.group(2).strip().strip('"').strip("'")
+                data[key] = value
 
     def get_available_actions(self) -> list[str]:
         """Get list of registered action names."""

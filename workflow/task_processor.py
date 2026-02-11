@@ -146,9 +146,10 @@ class TaskProcessor:
         plan_path = settings.plans_path / plan_name
 
         # Build plan content
+        safe_task_name = task_path.name.replace("'", "''")
         plan_content = f"""---
-task: {task_path.name}
-created: {datetime.now().isoformat()}
+task: '{safe_task_name}'
+created: '{datetime.now().isoformat()}'
 action_type: {decision.action_type.value}
 risk_level: {decision.risk_level}
 requires_approval: {decision.requires_approval}

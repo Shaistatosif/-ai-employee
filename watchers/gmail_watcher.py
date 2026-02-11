@@ -9,6 +9,7 @@ import base64
 import logging
 import os
 import pickle
+import threading
 import time
 from datetime import datetime
 from email.utils import parsedate_to_datetime
@@ -76,6 +77,7 @@ class GmailWatcher(BaseWatcher):
         self.processed_ids: set[str] = set()
         self._token_path = Path("token.pickle")
         self._credentials_path = Path("credentials.json")
+        self._thread: Optional[threading.Thread] = None
 
     def _get_credentials(self) -> Optional[Credentials]:
         """Get or refresh Gmail API credentials."""
@@ -133,7 +135,7 @@ class GmailWatcher(BaseWatcher):
             return False
 
     def start(self) -> None:
-        """Start watching Gmail (blocking)."""
+        """Start watching Gmail (non-blocking, runs in background thread)."""
         if not GOOGLE_API_AVAILABLE:
             logger.error("Google API libraries not installed. Run: pip install google-api-python-client google-auth-oauthlib")
             return
@@ -154,16 +156,18 @@ class GmailWatcher(BaseWatcher):
             result="success",
         )
 
+        self._thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._thread.start()
         logger.info(f"{self.name} started (interval: {self.check_interval}s)")
 
-        try:
-            while self.is_running:
+    def _poll_loop(self) -> None:
+        """Polling loop that runs in a background thread."""
+        while self.is_running:
+            try:
                 self.check()
-                time.sleep(self.check_interval)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.stop()
+            except Exception as e:
+                self.log_error(e, "Error in Gmail poll loop")
+            time.sleep(self.check_interval)
 
     def stop(self) -> None:
         """Stop watching Gmail."""
@@ -171,6 +175,9 @@ class GmailWatcher(BaseWatcher):
             return
 
         self.is_running = False
+        if self._thread is not None:
+            self._thread.join(timeout=self.check_interval + 5)
+            self._thread = None
         log_action(
             action_type="watcher_stopped",
             target="gmail",

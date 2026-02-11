@@ -78,12 +78,14 @@ class BaseWatcher(ABC):
         safe_title = safe_title[:50].strip()
         filename = f"{timestamp}_{safe_title}.md"
 
-        # Build task content
+        # Build task content (single-quote values to handle colons/backslashes in YAML)
+        safe_yaml_title = title.replace("'", "''")
+        safe_yaml_source = source.replace("'", "''")
         task_content = f"""---
-title: {title}
-source: {source}
+title: '{safe_yaml_title}'
+source: '{safe_yaml_source}'
 priority: {priority}
-created: {datetime.now().isoformat()}
+created: '{datetime.now().isoformat()}'
 watcher: {self.name}
 status: pending
 ---
