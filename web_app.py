@@ -168,6 +168,18 @@ async def home():
             th { color: #64ffda; }
             .risk-high { color: #ef4444; }
             .risk-low { color: #10b981; }
+            .form-input {
+                width: 100%;
+                padding: 12px 15px;
+                border-radius: 10px;
+                border: 1px solid rgba(255,255,255,0.2);
+                background: rgba(0,0,0,0.3);
+                color: #fff;
+                font-size: 1em;
+                margin-bottom: 10px;
+            }
+            .action-form { animation: fadeIn 0.3s ease; }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
             footer { text-align: center; margin-top: 40px; color: #8892b0; }
             footer a { color: #64ffda; text-decoration: none; }
         </style>
@@ -228,6 +240,40 @@ async def home():
                         <div>Done</div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card">
+                <h2>📨 Quick Actions</h2>
+                <p style="color: #8892b0; margin-bottom: 15px;">Submit tasks directly to the AI Employee system:</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button onclick="showAction('email')" style="margin-top:0">📧 Send Email</button>
+                    <button onclick="showAction('whatsapp')" style="margin-top:0">💬 WhatsApp</button>
+                    <button onclick="showAction('linkedin')" style="margin-top:0">💼 LinkedIn Post</button>
+                </div>
+
+                <div id="action-email" class="action-form" style="display:none;">
+                    <h3 style="margin-bottom:10px;">📧 Send Email</h3>
+                    <input type="text" id="email-to" placeholder="To: recipient@example.com" class="form-input">
+                    <input type="text" id="email-subject" placeholder="Subject" class="form-input">
+                    <textarea id="email-body" placeholder="Email body..." style="min-height:80px;"></textarea>
+                    <button onclick="submitAction('email')">📤 Send Email</button>
+                </div>
+
+                <div id="action-whatsapp" class="action-form" style="display:none;">
+                    <h3 style="margin-bottom:10px;">💬 WhatsApp Message</h3>
+                    <input type="text" id="wa-to" placeholder="To: +923001234567" class="form-input">
+                    <textarea id="wa-body" placeholder="Message..." style="min-height:80px;"></textarea>
+                    <button onclick="submitAction('whatsapp')">📤 Send WhatsApp</button>
+                </div>
+
+                <div id="action-linkedin" class="action-form" style="display:none;">
+                    <h3 style="margin-bottom:10px;">💼 LinkedIn Post</h3>
+                    <textarea id="li-body" placeholder="Write your LinkedIn post..." style="min-height:80px;"></textarea>
+                    <input type="text" id="li-hashtags" placeholder="Hashtags: #AI #Automation" class="form-input">
+                    <button onclick="submitAction('linkedin')">📝 Create Draft</button>
+                </div>
+
+                <div id="action-result" class="result" style="display:none;"></div>
             </div>
 
             <div class="card">
@@ -320,6 +366,51 @@ async def home():
                     <p><strong>Action:</strong> ${data.requires_approval ? 'Task goes to Pending_Approval folder' : 'Task auto-processed to Done'}</p>
                 `;
             }
+
+            function showAction(type) {
+                document.querySelectorAll('.action-form').forEach(f => f.style.display = 'none');
+                document.getElementById('action-' + type).style.display = 'block';
+                document.getElementById('action-result').style.display = 'none';
+            }
+
+            async function submitAction(type) {
+                let payload = { type: type };
+                const resultDiv = document.getElementById('action-result');
+
+                if (type === 'email') {
+                    payload.to = document.getElementById('email-to').value;
+                    payload.subject = document.getElementById('email-subject').value;
+                    payload.body = document.getElementById('email-body').value;
+                    if (!payload.to || !payload.subject || !payload.body) {
+                        alert('Please fill all email fields!'); return;
+                    }
+                } else if (type === 'whatsapp') {
+                    payload.to = document.getElementById('wa-to').value;
+                    payload.body = document.getElementById('wa-body').value;
+                    if (!payload.to || !payload.body) {
+                        alert('Please fill all WhatsApp fields!'); return;
+                    }
+                } else if (type === 'linkedin') {
+                    payload.body = document.getElementById('li-body').value;
+                    payload.hashtags = document.getElementById('li-hashtags').value;
+                    if (!payload.body) {
+                        alert('Please write the LinkedIn post!'); return;
+                    }
+                }
+
+                const response = await fetch('/api/submit-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result ' + (data.status === 'submitted' ? 'low' : 'high');
+                resultDiv.innerHTML = '<h3>' + (data.status === 'submitted' ? '✅ Task Submitted!' : '❌ Error') + '</h3>'
+                    + '<p>' + data.message + '</p>'
+                    + (data.file ? '<p><strong>File:</strong> ' + data.file + '</p>' : '');
+            }
         </script>
     </body>
     </html>
@@ -341,6 +432,47 @@ async def classify(data: dict):
     })
 
     return result
+
+
+@app.post("/api/submit-task")
+async def submit_task(data: dict):
+    """Submit a task to the Inbox for processing."""
+    task_type = data.get("type", "")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    vault_path = Path(os.environ.get("VAULT_PATH", "./obsidian_vault"))
+    inbox = vault_path / "Inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+
+    if task_type == "email":
+        content = f"type: email_send\nto: {data.get('to', '')}\nsubject: {data.get('subject', '')}\n\n{data.get('body', '')}"
+        filename = f"{timestamp}_send_email.txt"
+    elif task_type == "whatsapp":
+        content = f"type: whatsapp_message\nto: {data.get('to', '')}\n\n{data.get('body', '')}"
+        filename = f"{timestamp}_whatsapp_message.txt"
+    elif task_type == "linkedin":
+        hashtags = data.get("hashtags", "")
+        content = f"type: linkedin_post\nhashtags: {hashtags}\n\n{data.get('body', '')}"
+        filename = f"{timestamp}_linkedin_post.txt"
+    else:
+        raise HTTPException(status_code=400, detail="Unknown task type")
+
+    file_path = inbox / filename
+    file_path.write_text(content, encoding="utf-8")
+
+    # Classify for immediate feedback
+    result = classify_task(content)
+
+    demo_logs.append({
+        "time": datetime.now().isoformat(),
+        "content": f"[{task_type.upper()}] {filename}",
+        "result": result
+    })
+
+    return {
+        "status": "submitted",
+        "message": f"Task dropped in Inbox. Risk: {result['risk_level']}. {'Needs approval.' if result['requires_approval'] else 'Will auto-process.'}",
+        "file": filename
+    }
 
 
 @app.get("/api/stats")

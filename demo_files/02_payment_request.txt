@@ -1,0 +1,4 @@
+Payment Request: Transfer $500 to vendor CloudTech Solutions
+Invoice #INV-2026-0213 for monthly cloud hosting services.
+Account: vendor@cloudtech.com
+Due date: February 28, 2026

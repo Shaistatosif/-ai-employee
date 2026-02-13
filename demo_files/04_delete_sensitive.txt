@@ -1,0 +1,3 @@
+Delete all backup files from the server.
+Remove old database dumps and temporary files.
+Clean up the production logs older than 30 days.

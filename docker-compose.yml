@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  # Web dashboard
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./obsidian_vault:/app/obsidian_vault
+    restart: unless-stopped
+
+  # AI Employee worker (file watcher + Gmail + WhatsApp)
+  worker:
+    build: .
+    command: python main.py
+    env_file:
+      - .env
+    volumes:
+      - ./obsidian_vault:/app/obsidian_vault
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.pickle:/app/token.pickle:ro
+    restart: unless-stopped
+    depends_on:
+      - web
