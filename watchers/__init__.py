@@ -10,4 +10,18 @@ except ImportError:
     GmailWatcher = None
     GOOGLE_API_AVAILABLE = False
 
-__all__ = ["BaseWatcher", "FilesystemWatcher", "GmailWatcher", "GOOGLE_API_AVAILABLE"]
+# WhatsApp watcher requires Twilio library
+try:
+    from .whatsapp_watcher import WhatsAppWatcher, TWILIO_AVAILABLE
+except ImportError:
+    WhatsAppWatcher = None
+    TWILIO_AVAILABLE = False
+
+__all__ = [
+    "BaseWatcher",
+    "FilesystemWatcher",
+    "GmailWatcher",
+    "GOOGLE_API_AVAILABLE",
+    "WhatsAppWatcher",
+    "TWILIO_AVAILABLE",
+]

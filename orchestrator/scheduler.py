@@ -143,11 +143,14 @@ class WeeklyBriefingGenerator:
     - Completed tasks from Done folder
     - Business goals progress
     - Bottlenecks (tasks pending > 2 days)
-    - Subscription usage (if tracked)
+    - Email processing summary
+    - Watcher health and uptime
+    - System performance metrics
     """
 
-    def __init__(self):
+    def __init__(self, orchestrator=None):
         self.last_generated: Optional[datetime] = None
+        self._orchestrator = orchestrator
 
     def generate(self) -> Path:
         """
@@ -190,6 +193,84 @@ class WeeklyBriefingGenerator:
 
         logger.info(f"Weekly briefing generated: {briefing_path}")
         return briefing_path
+
+    def force_generate(self) -> Path:
+        """Generate an on-demand briefing (outside the weekly schedule)."""
+        logger.info("Force-generating briefing on demand")
+        return self.generate()
+
+    def _get_email_summary(self) -> dict:
+        """Get email processing summary for the reporting period."""
+        summary = {"total": 0, "senders": {}, "categories": {"high": 0, "normal": 0}}
+
+        try:
+            for task_file in settings.done_path.glob("*Email*.md"):
+                summary["total"] += 1
+                try:
+                    content = task_file.read_text(encoding="utf-8")
+                    # Extract sender
+                    for line in content.split("\n"):
+                        if line.startswith("**From**:") or line.startswith("- **from**:"):
+                            sender = line.split(":", 1)[1].strip()
+                            # Simplify sender to just email/name
+                            sender = sender.split("<")[0].strip() if "<" in sender else sender
+                            summary["senders"][sender] = summary["senders"].get(sender, 0) + 1
+                        if "priority: high" in line.lower():
+                            summary["categories"]["high"] += 1
+                        elif "priority: normal" in line.lower():
+                            summary["categories"]["normal"] += 1
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # Top 5 senders
+        summary["top_senders"] = sorted(
+            summary["senders"].items(), key=lambda x: x[1], reverse=True
+        )[:5]
+
+        return summary
+
+    def _get_watcher_health(self) -> dict:
+        """Get watcher health information."""
+        health = {"watchers": [], "watchdog": None}
+
+        if self._orchestrator:
+            for watcher in self._orchestrator.watchers:
+                status = watcher.get_status()
+                health["watchers"].append(status)
+
+            if self._orchestrator.watchdog:
+                health["watchdog"] = self._orchestrator.watchdog.get_status()
+
+        return health
+
+    def _get_system_metrics(self) -> dict:
+        """Get system performance metrics."""
+        metrics = {
+            "total_completed": 0,
+            "total_pending": 0,
+            "approval_rate": 0.0,
+        }
+
+        try:
+            completed = len(list(settings.done_path.glob("*.md")))
+            pending = len(list(settings.needs_action_path.glob("*.md")))
+            pending += len([
+                f for f in settings.pending_approval_path.glob("*.md")
+                if "_plan_" not in f.name
+            ])
+
+            metrics["total_completed"] = completed
+            metrics["total_pending"] = pending
+
+            total = completed + pending
+            if total > 0:
+                metrics["approval_rate"] = round(completed / total * 100, 1)
+        except Exception:
+            pass
+
+        return metrics
 
     def _get_completed_tasks(self, since: datetime) -> list[dict]:
         """Get tasks completed since date."""
@@ -278,7 +359,12 @@ class WeeklyBriefingGenerator:
         bottlenecks: list[dict],
         goals: str,
     ) -> str:
-        """Build the briefing report."""
+        """Build the briefing report with enhanced sections."""
+        # Gather enhanced data
+        email_summary = self._get_email_summary()
+        watcher_health = self._get_watcher_health()
+        system_metrics = self._get_system_metrics()
+
         return f"""# Weekly CEO Briefing
 
 **Generated**: {now.strftime('%Y-%m-%d %H:%M')}
@@ -291,6 +377,7 @@ class WeeklyBriefingGenerator:
 - **Tasks Completed This Week**: {len(completed)}
 - **Tasks Pending**: {len(pending)}
 - **Bottlenecks (>2 days)**: {len(bottlenecks)}
+- **Emails Processed**: {email_summary['total']}
 
 ---
 
@@ -309,6 +396,24 @@ class WeeklyBriefingGenerator:
 ## Bottlenecks (Action Required)
 
 {self._format_bottlenecks(bottlenecks)}
+
+---
+
+## Email Summary
+
+{self._format_email_summary(email_summary)}
+
+---
+
+## Watcher Health
+
+{self._format_watcher_health(watcher_health)}
+
+---
+
+## System Metrics
+
+{self._format_system_metrics(system_metrics)}
 
 ---
 
@@ -333,7 +438,7 @@ class WeeklyBriefingGenerator:
 ---
 
 *Generated by AI Employee System*
-*Review time: ~2 minutes*
+*Review time: ~3 minutes*
 """
 
     def _format_completed(self, tasks: list[dict]) -> str:
@@ -388,3 +493,57 @@ class WeeklyBriefingGenerator:
             recommendations.append("- System running smoothly, continue current workflow")
 
         return "\n".join(recommendations)
+
+    def _format_email_summary(self, summary: dict) -> str:
+        """Format email summary section."""
+        if summary["total"] == 0:
+            return "*No emails processed this period*"
+
+        lines = [
+            f"- **Total Emails Processed**: {summary['total']}",
+            f"- **High Priority**: {summary['categories']['high']}",
+            f"- **Normal Priority**: {summary['categories']['normal']}",
+        ]
+
+        if summary["top_senders"]:
+            lines.append("")
+            lines.append("**Top Senders**:")
+            for sender, count in summary["top_senders"]:
+                lines.append(f"  - {sender} ({count} emails)")
+
+        return "\n".join(lines)
+
+    def _format_watcher_health(self, health: dict) -> str:
+        """Format watcher health section."""
+        if not health["watchers"]:
+            return "*No watchers configured*"
+
+        lines = []
+        for w in health["watchers"]:
+            status_icon = "+" if w["is_running"] else "x"
+            last = w["last_check"] or "Never"
+            lines.append(
+                f"- [{status_icon}] **{w['name']}**: "
+                f"Items processed: {w['items_processed']}, Last check: {last}"
+            )
+
+        if health["watchdog"]:
+            wd = health["watchdog"]
+            healthy = "Healthy" if wd["watchers_healthy"] else "UNHEALTHY"
+            lines.append(f"- **Watchdog**: {healthy}")
+            if wd["restart_counts"]:
+                for name, count in wd["restart_counts"].items():
+                    if count > 0:
+                        lines.append(f"  - {name}: {count} restart(s)")
+
+        return "\n".join(lines)
+
+    def _format_system_metrics(self, metrics: dict) -> str:
+        """Format system metrics section."""
+        return (
+            f"| Metric | Value |\n"
+            f"|--------|-------|\n"
+            f"| Total Completed (all time) | {metrics['total_completed']} |\n"
+            f"| Currently Pending | {metrics['total_pending']} |\n"
+            f"| Completion Rate | {metrics['approval_rate']}% |"
+        )

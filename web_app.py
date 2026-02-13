@@ -178,7 +178,7 @@ async def home():
             <p class="subtitle">Your life and business on autopilot</p>
 
             <div style="text-align: center; margin-bottom: 30px;">
-                <span class="badge badge-green">✅ Silver Tier</span>
+                <span class="badge badge-green">✅ Gold Tier</span>
                 <span class="badge badge-blue">🔒 HITL Enabled</span>
                 <span class="badge badge-yellow">🧪 Demo Mode</span>
             </div>
@@ -187,15 +187,15 @@ async def home():
                 <h2>📊 System Stats</h2>
                 <div class="stats-grid">
                     <div class="stat-box">
-                        <div class="stat-number">6</div>
+                        <div class="stat-number">56+</div>
                         <div class="stat-label">Tasks Completed</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number">2</div>
+                        <div class="stat-number">9</div>
                         <div class="stat-label">Action Handlers</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number">1</div>
+                        <div class="stat-number">3</div>
                         <div class="stat-label">Active Watchers</div>
                     </div>
                     <div class="stat-box">

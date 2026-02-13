@@ -4,7 +4,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status: Silver Tier](https://img.shields.io/badge/Status-Silver%20Tier-yellow.svg)](#tier-progress)
+[![Status: Gold Tier](https://img.shields.io/badge/Status-Gold%20Tier-gold.svg)](#tier-progress)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black.svg)](https://ai-employee-system.vercel.app)
 
 **[Live Demo](https://ai-employee-system.vercel.app)** - Try the HITL Classification System!
@@ -23,6 +23,15 @@
 | 📧 **Gmail Watcher** | ✅ Working | Reads & monitors Gmail inbox |
 | 📨 **Email Sending** | ✅ Working | Sends emails via Gmail API |
 | 🪟 **Windows Support** | ✅ Working | PollingObserver for reliability |
+| 🛡️ **Watchdog** | ✅ Working | Auto-restarts failed watchers |
+| 📱 **WhatsApp Watcher** | ✅ Working | Twilio-based message monitoring |
+| 💼 **LinkedIn Drafts** | ✅ Working | Social media post drafting |
+| 📋 **Enhanced Briefings** | ✅ Working | Email stats, health, metrics |
+| 🔄 **Multi-Step Tasks** | ✅ Working | Persistent task chains (Ralph Loop) |
+| 📘 **Facebook Drafts** | ✅ Working | Social media post drafting |
+| 📸 **Instagram Drafts** | ✅ Working | Social media post drafting |
+| 🐦 **Twitter/X Drafts** | ✅ Working | Social media post drafting |
+| 📒 **Odoo Accounting** | ✅ Working | Invoices & expenses via XML-RPC |
 
 ---
 
@@ -98,11 +107,14 @@ echo "Test task for AI" > obsidian_vault/Inbox/test.txt
 ai-employee/
 ├── 🧠 orchestrator/
 │   ├── main.py              # System coordinator
-│   └── scheduler.py         # Weekly briefings, dashboard updates
+│   ├── scheduler.py         # Weekly briefings, dashboard updates
+│   ├── watchdog.py          # Error recovery & auto-restart
+│   └── ralph_loop.py        # Multi-step task persistence
 │
 ├── 👁️ watchers/
 │   ├── filesystem_watcher.py # Monitors Inbox folder
-│   └── gmail_watcher.py      # Email monitoring (optional)
+│   ├── gmail_watcher.py      # Email monitoring (optional)
+│   └── whatsapp_watcher.py   # WhatsApp via Twilio (optional)
 │
 ├── ⚖️ workflow/
 │   ├── hitl.py              # Risk classification
@@ -111,13 +123,20 @@ ai-employee/
 │
 ├── ⚡ actions/
 │   ├── email_action.py      # Send emails via Gmail
+│   ├── linkedin_action.py   # LinkedIn post drafts
 │   └── executor.py          # Coordinates action execution
+│
+├── 🔌 mcp_servers/
+│   ├── email_mcp/server.py  # Email MCP (send, draft, search)
+│   └── browser_mcp/server.py # Vault MCP (tasks, approve, status)
 │
 ├── 📁 obsidian_vault/       # Your data (Markdown)
 │   ├── Dashboard.md         # Live system status
 │   ├── Inbox/               # Drop files here
 │   ├── Pending_Approval/    # Review these
 │   ├── Done/                # Completed tasks
+│   ├── Drafts/LinkedIn/     # Social media drafts
+│   ├── MultiStep/           # Ralph Loop state
 │   └── Logs/                # Action history
 │
 ├── ⚙️ config/
@@ -147,11 +166,15 @@ ai-employee/
 - [x] Gmail email sending
 - [x] Windows Task Scheduler setup
 
-### ⏳ Gold Tier (Future)
-- [ ] WhatsApp integration
-- [ ] Multiple social platforms
-- [ ] Weekly CEO briefings
-- [ ] Error recovery system
+### ✅ Gold Tier (Complete)
+- [x] WhatsApp integration (Twilio)
+- [x] Multiple social platforms (LinkedIn, Facebook, Instagram, Twitter/X)
+- [x] Odoo Community self-hosted accounting (invoices + expenses)
+- [x] Enhanced CEO briefings (email stats, health, metrics)
+- [x] Error recovery & watchdog system
+- [x] Multi-step task persistence (Ralph Wiggum Loop)
+- [x] Email MCP Server (send, draft, search)
+- [x] Vault Manager MCP Server (tasks, approve, status, briefings)
 
 ---
 
@@ -178,8 +201,66 @@ LOG_LEVEL=INFO
 # GMAIL_CLIENT_ID=your_id
 # GMAIL_CLIENT_SECRET=your_secret
 
+# WhatsApp via Twilio (optional)
+# TWILIO_ACCOUNT_SID=your_sid
+# TWILIO_AUTH_TOKEN=your_token
+# TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+
+# Odoo Community (optional)
+# ODOO_URL=http://localhost:8069
+# ODOO_DB=mydb
+# ODOO_USERNAME=admin
+# ODOO_PASSWORD=admin
+
 # Database (optional)
 # NEON_DATABASE_URL=postgresql://...
+```
+
+---
+
+## 🔌 MCP Servers
+
+Two MCP servers let Claude Desktop/Code interact with the AI Employee system directly.
+
+### Email MCP
+| Tool | Description |
+|------|-------------|
+| `send_email` | Send emails via Gmail (respects DRY_RUN) |
+| `draft_email` | Create email drafts for review |
+| `list_recent_emails` | List processed email tasks |
+| `search_emails` | Search email tasks by content |
+
+### Vault Manager MCP
+| Tool | Description |
+|------|-------------|
+| `list_tasks` | List tasks by folder |
+| `approve_task` | Move task to Approved |
+| `reject_task` | Reject with reason |
+| `create_task` | Create new tasks |
+| `get_dashboard` | Read system dashboard |
+| `get_system_status` | Full system status |
+| `force_briefing` | Generate CEO briefing |
+| `list_multistep_tasks` | View Ralph Loop tasks |
+
+### Setup (Claude Desktop)
+
+Add to `%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ai-employee-email": {
+      "command": "python",
+      "args": ["-m", "mcp_servers.email_mcp.server"],
+      "cwd": "D:\\Hackathon-0"
+    },
+    "ai-employee-vault": {
+      "command": "python",
+      "args": ["-m", "mcp_servers.browser_mcp.server"],
+      "cwd": "D:\\Hackathon-0"
+    }
+  }
+}
 ```
 
 ---

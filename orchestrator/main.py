@@ -16,8 +16,11 @@ from typing import Optional
 from config import settings
 from config.database import log_action, init_database
 from watchers import FilesystemWatcher, GmailWatcher, GOOGLE_API_AVAILABLE
+from watchers import WhatsAppWatcher, TWILIO_AVAILABLE
 from workflow import TaskProcessor, ApprovalHandler
 from orchestrator.scheduler import Scheduler, WeeklyBriefingGenerator
+from orchestrator.watchdog import WatchdogMonitor
+from orchestrator.ralph_loop import RalphWiggumLoop
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +45,8 @@ class Orchestrator:
         self.approval_handler: Optional[ApprovalHandler] = None
         self.scheduler: Optional[Scheduler] = None
         self.briefing_generator: Optional[WeeklyBriefingGenerator] = None
+        self.watchdog: Optional[WatchdogMonitor] = None
+        self.ralph_loop: Optional[RalphWiggumLoop] = None
         self.process_interval = 10  # seconds between processing cycles
 
     def setup(self) -> None:
@@ -82,6 +87,18 @@ class Orchestrator:
             self.watchers.append(gmail_watcher)
             logger.info("Gmail watcher enabled (credentials.json found)")
 
+        # Setup WhatsApp watcher (if Twilio available and configured)
+        if not TWILIO_AVAILABLE:
+            logger.info("WhatsApp watcher disabled (Twilio library not installed)")
+            logger.info("  To enable: pip install twilio")
+        elif not settings.is_whatsapp_configured():
+            logger.info("WhatsApp watcher disabled (Twilio credentials not set)")
+            logger.info("  To enable: set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in .env")
+        else:
+            whatsapp_watcher = WhatsAppWatcher(check_interval=60)
+            self.watchers.append(whatsapp_watcher)
+            logger.info("WhatsApp watcher enabled")
+
         # Setup HITL workflow components
         self.task_processor = TaskProcessor()
         self.approval_handler = ApprovalHandler(on_approved=self._on_task_approved)
@@ -89,7 +106,7 @@ class Orchestrator:
 
         # Setup scheduler with periodic tasks
         self.scheduler = Scheduler()
-        self.briefing_generator = WeeklyBriefingGenerator()
+        self.briefing_generator = WeeklyBriefingGenerator(orchestrator=self)
 
         # Weekly briefing: run every 7 days (604800 seconds)
         self.scheduler.add_task(
@@ -108,6 +125,17 @@ class Orchestrator:
         )
 
         logger.info("Scheduler initialized with periodic tasks")
+
+        # Setup watchdog monitor for error recovery
+        self.watchdog = WatchdogMonitor(self.watchers)
+        logger.info("Watchdog monitor initialized")
+
+        # Setup Ralph Wiggum Loop for multi-step task persistence
+        self.ralph_loop = RalphWiggumLoop()
+        resumed = self.ralph_loop.resume_all()
+        if resumed > 0:
+            logger.info(f"Resumed {resumed} multi-step task(s)")
+        logger.info("Ralph Wiggum Loop initialized")
 
         logger.info("Setup complete")
 
@@ -145,6 +173,11 @@ class Orchestrator:
             self.scheduler.start()
             logger.info("Started: Scheduler")
 
+        # Start watchdog
+        if self.watchdog:
+            self.watchdog.start()
+            logger.info("Started: Watchdog Monitor")
+
         logger.info("=" * 50)
         logger.info("AI Employee System is running!")
         logger.info(f"  Vault: {settings.vault_path}")
@@ -168,6 +201,11 @@ class Orchestrator:
             return
 
         logger.info("Shutting down AI Employee System...")
+
+        # Stop watchdog first (before watchers)
+        if self.watchdog:
+            self.watchdog.stop()
+            logger.info("Stopped: Watchdog Monitor")
 
         # Stop scheduler
         if self.scheduler:
@@ -208,6 +246,8 @@ class Orchestrator:
             "vault_path": str(settings.vault_path),
             "watchers": [w.get_status() for w in self.watchers],
             "scheduler": self.scheduler.get_status() if self.scheduler else None,
+            "watchdog": self.watchdog.get_status() if self.watchdog else None,
+            "multistep_tasks": self.ralph_loop.get_active_tasks() if self.ralph_loop else [],
             "pending_tasks": self._count_pending_tasks(),
             "completed_tasks": self._count_completed_tasks(),
         }

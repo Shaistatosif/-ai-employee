@@ -11,6 +11,9 @@ from typing import Optional
 from actions.base_action import BaseAction, ActionResult, ActionStatus
 from actions.email_action import EmailAction, EmailDraftAction
 from actions.general_action import GeneralAction
+from actions.linkedin_action import LinkedInDraftAction
+from actions.social_action import FacebookDraftAction, InstagramDraftAction, TwitterDraftAction
+from actions.odoo_action import OdooInvoiceAction, OdooExpenseAction
 from config.database import log_action
 
 logger = logging.getLogger(__name__)
@@ -37,6 +40,16 @@ class ActionExecutor:
         # Email actions (specific handlers first)
         self.register(EmailAction())
         self.register(EmailDraftAction())
+
+        # Social media actions
+        self.register(LinkedInDraftAction())
+        self.register(FacebookDraftAction())
+        self.register(InstagramDraftAction())
+        self.register(TwitterDraftAction())
+
+        # Odoo accounting actions
+        self.register(OdooInvoiceAction())
+        self.register(OdooExpenseAction())
 
         # General fallback handler (MUST be last - catches everything)
         self.register(GeneralAction())

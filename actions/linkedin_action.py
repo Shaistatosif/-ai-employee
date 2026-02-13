@@ -1,0 +1,177 @@
+"""
+LinkedIn draft action for Personal AI Employee System.
+
+Creates LinkedIn post drafts in the vault for human review.
+All social media posts require HITL approval before publishing.
+"""
+
+import logging
+import re
+from datetime import datetime
+from pathlib import Path
+
+from actions.base_action import BaseAction, ActionResult, ActionStatus
+from config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class LinkedInDraftAction(BaseAction):
+    """
+    Creates LinkedIn post drafts for human review.
+
+    Drafts are saved to obsidian_vault/Drafts/LinkedIn/
+    and must be reviewed before publishing.
+    """
+
+    def __init__(self):
+        super().__init__(name="linkedin_draft")
+
+    def can_handle(self, task_data: dict) -> bool:
+        """
+        Check if this is a LinkedIn post task.
+
+        Handles tasks with:
+        - type: linkedin_post or social_post with 'linkedin' in body
+        """
+        task_type = task_data.get("type", "").lower()
+
+        if task_type == "linkedin_post":
+            return True
+
+        if task_type == "social_post":
+            body = task_data.get("body", "").lower()
+            raw = task_data.get("raw_content", "").lower()
+            if "linkedin" in body or "linkedin" in raw:
+                return True
+
+        return False
+
+    def execute(self, task_data: dict, task_path: Path) -> ActionResult:
+        """
+        Create a LinkedIn post draft in the vault.
+
+        The draft includes post content, hashtags, and review instructions.
+        """
+        logger.info(f"Creating LinkedIn draft for: {task_path.name}")
+
+        # Extract post data
+        post_data = self._extract_post_data(task_data)
+
+        # Create drafts directory
+        linkedin_drafts = settings.drafts_path / "LinkedIn"
+        linkedin_drafts.mkdir(parents=True, exist_ok=True)
+
+        # Generate draft file
+        now = datetime.now()
+        safe_title = "".join(
+            c if c.isalnum() or c in "-_ " else "_"
+            for c in post_data["title"]
+        )[:40].strip()
+        filename = f"draft_{now.strftime('%Y%m%d_%H%M%S')}_{safe_title}.md"
+        draft_path = linkedin_drafts / filename
+
+        draft_content = self._build_draft(post_data, now)
+        draft_path.write_text(draft_content, encoding="utf-8")
+
+        result = ActionResult(
+            status=ActionStatus.SUCCESS,
+            message=f"LinkedIn draft created: {draft_path.name}",
+            data={
+                "draft_path": str(draft_path),
+                "title": post_data["title"],
+                "hashtags": post_data["hashtags"],
+            },
+        )
+        self._log_execution(task_path, result, {"draft_path": str(draft_path)})
+
+        logger.info(f"LinkedIn draft created: {draft_path}")
+        return result
+
+    def _extract_post_data(self, task_data: dict) -> dict:
+        """Extract LinkedIn post data from task."""
+        body = task_data.get("body", "")
+        raw = task_data.get("raw_content", "")
+
+        # Title
+        title = task_data.get("title", "")
+        if not title:
+            title = task_data.get("subject", "LinkedIn Post")
+
+        # Post content
+        content = task_data.get("message", "") or task_data.get("post_content", "")
+        if not content:
+            # Try to extract from body
+            content = body
+
+        # Hashtags
+        hashtags = task_data.get("hashtags", [])
+        if not hashtags and isinstance(body, str):
+            hashtags = re.findall(r"#(\w+)", body + " " + raw)
+
+        # Target audience
+        audience = task_data.get("audience", "Professional network")
+
+        return {
+            "title": title,
+            "content": content,
+            "hashtags": hashtags,
+            "audience": audience,
+        }
+
+    def _build_draft(self, post_data: dict, now: datetime) -> str:
+        """Build the LinkedIn draft markdown file."""
+        hashtag_str = " ".join(f"#{h}" for h in post_data["hashtags"]) if post_data["hashtags"] else "# Add relevant hashtags"
+
+        return f"""---
+type: linkedin_post
+status: draft
+created: '{now.isoformat()}'
+audience: '{post_data["audience"]}'
+platform: linkedin
+requires_approval: true
+---
+
+# LinkedIn Post Draft
+
+**Created**: {now.strftime('%Y-%m-%d %H:%M')}
+**Status**: Draft - Requires Review
+**Target Audience**: {post_data["audience"]}
+
+---
+
+## Post Content
+
+{post_data["content"]}
+
+---
+
+## Hashtags
+
+{hashtag_str}
+
+---
+
+## Review Checklist
+
+- [ ] Content is professional and appropriate
+- [ ] No confidential information included
+- [ ] Hashtags are relevant
+- [ ] Tone matches brand voice
+- [ ] No spelling/grammar errors
+- [ ] Links are valid (if any)
+
+---
+
+## Instructions
+
+1. Review and edit the post content above
+2. Update hashtags as needed
+3. When ready to publish, manually post to LinkedIn
+4. Move this file to Done/ after publishing
+
+---
+
+*Draft generated by AI Employee System*
+*All social media posts require human review before publishing*
+"""

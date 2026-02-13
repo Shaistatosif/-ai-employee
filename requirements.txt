@@ -27,8 +27,14 @@ watchdog>=3.0.0
 httpx>=0.25.0
 aiohttp>=3.9.0
 
-# Browser automation (for WhatsApp, Silver tier)
+# WhatsApp via Twilio (Gold tier)
+twilio>=9.0.0
+
+# Browser automation (optional)
 # playwright>=1.40.0
+
+# MCP Servers
+mcp>=1.0.0
 
 # Scheduling
 schedule>=1.2.0

@@ -46,6 +46,27 @@ class Settings(BaseSettings):
     gmail_refresh_token: Optional[str] = Field(default=None)
 
     # ==========================================================================
+    # Twilio (WhatsApp)
+    # ==========================================================================
+    twilio_account_sid: Optional[str] = Field(default=None)
+    twilio_auth_token: Optional[str] = Field(default=None)
+    twilio_whatsapp_from: Optional[str] = Field(
+        default=None,
+        description="Twilio WhatsApp number (e.g., whatsapp:+14155238886)",
+    )
+
+    # ==========================================================================
+    # Odoo Community (Accounting)
+    # ==========================================================================
+    odoo_url: Optional[str] = Field(
+        default=None,
+        description="Odoo Community URL (e.g., http://localhost:8069)",
+    )
+    odoo_db: Optional[str] = Field(default=None)
+    odoo_username: Optional[str] = Field(default=None)
+    odoo_password: Optional[str] = Field(default=None)
+
+    # ==========================================================================
     # AI Provider
     # ==========================================================================
     anthropic_api_key: Optional[str] = Field(default=None)
@@ -131,6 +152,16 @@ class Settings(BaseSettings):
         """Path to Briefings folder."""
         return self.vault_path / "Briefings"
 
+    @property
+    def drafts_path(self) -> Path:
+        """Path to Drafts folder."""
+        return self.vault_path / "Drafts"
+
+    @property
+    def multistep_path(self) -> Path:
+        """Path to MultiStep task state folder."""
+        return self.vault_path / "MultiStep"
+
     def ensure_directories(self) -> None:
         """Create all required directories if they don't exist."""
         directories = [
@@ -142,6 +173,8 @@ class Settings(BaseSettings):
             self.done_path,
             self.logs_path,
             self.briefings_path,
+            self.drafts_path,
+            self.multistep_path,
         ]
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
@@ -157,6 +190,14 @@ class Settings(BaseSettings):
             self.gmail_client_secret,
             self.gmail_refresh_token,
         ])
+
+    def is_whatsapp_configured(self) -> bool:
+        """Check if Twilio WhatsApp is configured."""
+        return all([self.twilio_account_sid, self.twilio_auth_token])
+
+    def is_odoo_configured(self) -> bool:
+        """Check if Odoo Community is configured."""
+        return all([self.odoo_url, self.odoo_db, self.odoo_username, self.odoo_password])
 
 
 # Global settings instance
